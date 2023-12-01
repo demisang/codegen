@@ -1,4 +1,4 @@
-package codegen
+package internal
 
 import (
 	"bytes"
@@ -17,23 +17,29 @@ import (
 // Имена файлов, расположенных в корневой директории каждого шаблона.
 // Они будут исключены из результатов генерации.
 const (
-	// metaFileName хранит имя, описание и замены выбранного шаблона
+	// metaFileName хранит имя, описание и замены выбранного шаблона.
 	metaFileName = ".meta.json"
-	// helpFileName показывает пользователю справку для пост-генерации выбранного шаблона
+	// helpFileName показывает пользователю справку для пост-генерации выбранного шаблона.
 	helpFileName = ".help.md"
 )
 
 const (
-	// dirPermissions drwxr-xr-x
-	dirPermissions = 0755
-	// filePermissions -rw-r--r--
-	filePermissions = 0644
+	// dirPermissions drwxr-xr-x.
+	dirPermissions = 0o755
+	// filePermissions -rw-r--r--.
+	filePermissions = 0o644
 )
 
 type App struct {
 	log          *logrus.Logger
 	RootDir      string
 	TemplatesDir string
+}
+
+type ReplaceOptions struct {
+	TemplateID            string        `json:"template_id"`
+	TargetRelativeRootDir string        `json:"target_dir"`
+	Placeholders          []Placeholder `json:"placeholders"`
 }
 
 func NewApp(log *logrus.Logger, rootDir, templatesDir string) *App {
@@ -44,13 +50,13 @@ func NewApp(log *logrus.Logger, rootDir, templatesDir string) *App {
 	}
 }
 
-func (a *App) GetTemplatesList(ctx context.Context) ([]Template, error) {
-	var results []Template
-
+func (a *App) GetTemplatesList(_ context.Context) ([]Template, error) {
 	files, err := os.ReadDir(a.TemplatesDir)
 	if err != nil {
-		return results, fmt.Errorf("get templates: %w", err)
+		return []Template{}, fmt.Errorf("get templates: %w", err)
 	}
+
+	results := make([]Template, 0, len(files))
 
 	// Parse ".meta.json" from each template dir
 	for _, file := range files {
@@ -59,7 +65,7 @@ func (a *App) GetTemplatesList(ctx context.Context) ([]Template, error) {
 		}
 
 		template := Template{
-			Id: file.Name(),
+			ID: file.Name(),
 		}
 
 		jsonString, err := os.ReadFile(a.TemplatesDir + "/" + file.Name() + "/.meta.json")
@@ -78,28 +84,36 @@ func (a *App) GetTemplatesList(ctx context.Context) ([]Template, error) {
 	return results, nil
 }
 
-func (a *App) RawList(ctx context.Context, templateID, targetRelativeRootDir string, placeholders []Placeholder) ([]PreviewListItem, error) {
-	list, err := a.PreviewList(ctx, templateID, targetRelativeRootDir, nil)
+func (a *App) RawList(ctx context.Context, options ReplaceOptions) ([]PreviewListItem, error) {
+	optionsWithoutPlaceholders := ReplaceOptions{
+		TemplateID:            options.TemplateID,
+		TargetRelativeRootDir: options.TargetRelativeRootDir,
+		Placeholders:          nil,
+	}
+
+	list, err := a.PreviewList(ctx, optionsWithoutPlaceholders)
 	if err != nil {
 		return list, fmt.Errorf("raw preview: %w", err)
 	}
 
 	// Check if replaced dir/file names already exists
 	for k, item := range list {
-		path := filepath.Join(a.RootDir, targetRelativeRootDir, item.Path)
-		for _, placeholder := range placeholders {
+		path := filepath.Join(a.RootDir, options.TargetRelativeRootDir, item.Path)
+		for _, placeholder := range options.Placeholders {
 			path = strings.ReplaceAll(path, placeholder.Value, placeholder.Replace)
 		}
+
 		list[k].IsNew = a.checkFileExits(path)
 	}
 
 	return list, nil
 }
 
-func (a *App) PreviewList(ctx context.Context, templateID, targetRelativeRootDir string, placeholders []Placeholder) ([]PreviewListItem, error) {
+func (a *App) PreviewList(_ context.Context, options ReplaceOptions) ([]PreviewListItem, error) {
 	var items []PreviewListItem
-	templateDir := filepath.Join(a.TemplatesDir, templateID)
-	targetDir := filepath.Join(a.RootDir, targetRelativeRootDir)
+
+	templateDir := filepath.Join(a.TemplatesDir, options.TemplateID)
+	targetDir := filepath.Join(a.RootDir, options.TargetRelativeRootDir)
 
 	err := filepath.WalkDir(templateDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -116,14 +130,14 @@ func (a *App) PreviewList(ctx context.Context, templateID, targetRelativeRootDir
 
 		// extract "/models/product.go" from "/var/www/project/codegen/templates/example1/models/product.go"
 		relativeTargetPath := strings.Replace(path, templateDir, "", 1)
-		for _, placeholder := range placeholders {
+		for _, placeholder := range options.Placeholders {
 			relativeTargetPath = strings.ReplaceAll(relativeTargetPath, placeholder.Value, placeholder.Replace)
 		}
 
 		var content string
 
 		if !d.IsDir() {
-			content, err = a.replacePlaceholdersInFile(path, placeholders)
+			content, err = a.replacePlaceholdersInFile(path, options.Placeholders)
 			if err != nil {
 				return err
 			}
@@ -142,7 +156,6 @@ func (a *App) PreviewList(ctx context.Context, templateID, targetRelativeRootDir
 
 		return nil
 	})
-
 	if err != nil {
 		return items, err
 	}
@@ -150,14 +163,14 @@ func (a *App) PreviewList(ctx context.Context, templateID, targetRelativeRootDir
 	return items, nil
 }
 
-func (a *App) Generate(ctx context.Context, templateID, targetRelativeRootDir string, placeholders []Placeholder) (string, error) {
-	previewList, err := a.PreviewList(ctx, templateID, targetRelativeRootDir, placeholders)
+func (a *App) Generate(ctx context.Context, options ReplaceOptions) (string, error) {
+	previewList, err := a.PreviewList(ctx, options)
 	if err != nil {
 		return "", fmt.Errorf("preview: %w", err)
 	}
 
 	for _, previewListItem := range previewList {
-		destinationDir := filepath.Join(a.RootDir, targetRelativeRootDir)
+		destinationDir := filepath.Join(a.RootDir, options.TargetRelativeRootDir)
 		destinationFile := filepath.Join(destinationDir, previewListItem.Path)
 
 		if previewListItem.IsDir {
@@ -184,9 +197,9 @@ func (a *App) Generate(ctx context.Context, templateID, targetRelativeRootDir st
 	}
 
 	// Generate help message
-	templateHelpFilepath := filepath.Join(a.TemplatesDir, templateID, helpFileName)
+	templateHelpFilepath := filepath.Join(a.TemplatesDir, options.TemplateID, helpFileName)
 
-	helpString, err := a.replacePlaceholdersInFile(templateHelpFilepath, placeholders)
+	helpString, err := a.replacePlaceholdersInFile(templateHelpFilepath, options.Placeholders)
 	if err != nil {
 		helpString = "Files successfully generated! But caused error while generating help message: " + err.Error()
 	}
@@ -194,7 +207,7 @@ func (a *App) Generate(ctx context.Context, templateID, targetRelativeRootDir st
 	return helpString, nil
 }
 
-func (a *App) GetDirectories(ctx context.Context, selectedDir string) ([]string, error) {
+func (a *App) GetDirectories(_ context.Context, selectedDir string) ([]string, error) {
 	var result []string
 
 	dirs, err := os.ReadDir(filepath.Join(a.RootDir, selectedDir))
@@ -216,6 +229,7 @@ func (a *App) replacePlaceholdersInFile(path string, placeholders []Placeholder)
 	if err != nil {
 		return "", err
 	}
+
 	for _, placeholder := range placeholders {
 		fromBytes := []byte(placeholder.Value)
 		toBytes := []byte(placeholder.Replace)

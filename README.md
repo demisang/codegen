@@ -5,9 +5,13 @@ Code generator
 ### Install
 
 ```shell
-go get github.com/demisang/codegen
-cp $GOPATH/pkg/mod/github.com/demisang/codegen/cmd/codegen-service/main.go cmd/codegen-service/main.go
-cp $GOPATH/pkg/mod/github.com/demisang/codegen/templates-example internal/codegen/templates-example
+go install github.com/demisang/codegen@latest
+```
+
+### Get template samples
+```shell
+# Golang onion-architecture code samples (will extract to ./pkg/codegen/templates)
+wget -qO- https://github.com/demisang/codegen/tree/main/templates/go_onion.tar.gz | tar xvz - -C pkg/codegen/templates
 ```
 
 Makefile:
@@ -15,11 +19,11 @@ Makefile:
 ```makefile
 ## codegen: run codegen app on http://localhost:4765
 codegen:
-    go run cmd/codegen-service/main.go --root="./" --templates="./internal/codegen/templates"
+    codegen --root="./" --templates="./pkg/codegen/templates"
 ```
 
 Open GUI http://localhost:4765
 
 ### Usage
 
-Feel-free to create/edit templates in `internal/codegen/templates` adapt for your project
+Feel free to create/edit templates in `pkg/codegen/templates` adapted for your project

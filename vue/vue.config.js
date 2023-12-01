@@ -3,5 +3,5 @@ const path = require("path");
 
 module.exports = defineConfig({
   transpileDependencies: true,
-  outputDir: path.resolve(__dirname, "../rest/public"),
+  outputDir: path.resolve(__dirname, "../internal/rest/public"),
 })

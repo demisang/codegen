@@ -1,22 +1,22 @@
 {
   "name": "Model",
   "target_dir": "internal/models",
-  "description": "Новая модель",
+  "description": "New model",
   "placeholders": [
     {
       "value": "__PascalCase__",
       "replace": "ProductOrder",
-      "description": "Имя модели в PascalCase регистре"
+      "description": "Model name in PascalCase"
     },
     {
       "value": "__camelCase__",
       "replace": "productOrder",
-      "description": "Имя модели в camelCase регистре"
+      "description": "Model name in camelCase"
     },
     {
       "value": "__snake_case__",
       "replace": "product_order",
-      "description": "Имя модели в нижнем регистре"
+      "description": "Model name in snake_case"
     }
   ]
 }

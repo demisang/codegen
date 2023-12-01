@@ -5,18 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/demisang/codegen"
+	"github.com/demisang/codegen/internal"
 )
-
-type GenerateRequest struct {
-	URL *string `json:"url"`
-}
-
-type generateRequest struct {
-	TemplateID   string                `json:"template_id"`
-	TargetDir    string                `json:"target_dir"`
-	Placeholders []codegen.Placeholder `json:"placeholders"`
-}
 
 func (s *Server) templates(w http.ResponseWriter, r *http.Request) {
 	templates, err := s.app.GetTemplatesList(r.Context())
@@ -29,7 +19,7 @@ func (s *Server) templates(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) rawList(w http.ResponseWriter, r *http.Request) {
-	var requestParams generateRequest
+	var requestParams internal.ReplaceOptions
 
 	err := json.NewDecoder(r.Body).Decode(&requestParams)
 	if err != nil {
@@ -37,7 +27,7 @@ func (s *Server) rawList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	templates, err := s.app.RawList(r.Context(), requestParams.TemplateID, requestParams.TargetDir, requestParams.Placeholders)
+	templates, err := s.app.RawList(r.Context(), requestParams)
 	if err != nil {
 		errResponse(w, r, 500, err)
 		return
@@ -47,7 +37,7 @@ func (s *Server) rawList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) previewList(w http.ResponseWriter, r *http.Request) {
-	var requestParams generateRequest
+	var requestParams internal.ReplaceOptions
 
 	err := json.NewDecoder(r.Body).Decode(&requestParams)
 	if err != nil {
@@ -55,7 +45,7 @@ func (s *Server) previewList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	templates, err := s.app.PreviewList(r.Context(), requestParams.TemplateID, requestParams.TargetDir, requestParams.Placeholders)
+	templates, err := s.app.PreviewList(r.Context(), requestParams)
 	if err != nil {
 		errResponse(w, r, 500, err)
 		return
@@ -65,7 +55,7 @@ func (s *Server) previewList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) generate(w http.ResponseWriter, r *http.Request) {
-	var requestParams generateRequest
+	var requestParams internal.ReplaceOptions
 
 	err := json.NewDecoder(r.Body).Decode(&requestParams)
 	if err != nil {
@@ -73,7 +63,7 @@ func (s *Server) generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	helpMessage, err := s.app.Generate(r.Context(), requestParams.TemplateID, requestParams.TargetDir, requestParams.Placeholders)
+	helpMessage, err := s.app.Generate(r.Context(), requestParams)
 	if err != nil {
 		errResponse(w, r, 500, err)
 		return

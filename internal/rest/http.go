@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/demisang/codegen"
+	"github.com/demisang/codegen/internal"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,10 +22,10 @@ type Server struct {
 }
 
 type app interface {
-	GetTemplatesList(ctx context.Context) ([]codegen.Template, error)
-	RawList(ctx context.Context, templateID, targetRelativeRootDir string, placeholders []codegen.Placeholder) ([]codegen.PreviewListItem, error)
-	PreviewList(ctx context.Context, templateID, targetRelativeRootDir string, placeholders []codegen.Placeholder) ([]codegen.PreviewListItem, error)
-	Generate(ctx context.Context, templateID, targetRelativeRootDir string, placeholders []codegen.Placeholder) (string, error)
+	GetTemplatesList(ctx context.Context) ([]internal.Template, error)
+	RawList(ctx context.Context, options internal.ReplaceOptions) ([]internal.PreviewListItem, error)
+	PreviewList(ctx context.Context, options internal.ReplaceOptions) ([]internal.PreviewListItem, error)
+	Generate(ctx context.Context, options internal.ReplaceOptions) (string, error)
 	GetDirectories(ctx context.Context, selectedDir string) ([]string, error)
 }
 
@@ -51,21 +51,21 @@ func NewServer(app app, log *logrus.Logger, host string, port int) *Server {
 	// mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./public"))))
 	// mux.HandleFunc("/", fs.ServeHTTP)
 	// mux.HandleFunc("/", s.loggingMiddleware(http.HandlerFunc(s.linkGet)).ServeHTTP)
-	mux.HandleFunc("/templates", s.loggingMiddleware(s.enableCors(
+	mux.HandleFunc("/templates", s.enableCors(
 		http.HandlerFunc(s.templates),
-	)).ServeHTTP)
-	mux.HandleFunc("/raw-list", s.loggingMiddleware(s.enableCors(
+	).ServeHTTP)
+	mux.HandleFunc("/raw-list", s.enableCors(
 		http.HandlerFunc(s.rawList),
-	)).ServeHTTP)
+	).ServeHTTP)
 	mux.HandleFunc("/preview-list", s.loggingMiddleware(s.enableCors(
 		http.HandlerFunc(s.previewList),
 	)).ServeHTTP)
 	mux.HandleFunc("/generate", s.loggingMiddleware(s.enableCors(
 		http.HandlerFunc(s.generate),
 	)).ServeHTTP)
-	mux.HandleFunc("/directories", s.loggingMiddleware(s.enableCors(
+	mux.HandleFunc("/directories", s.enableCors(
 		http.HandlerFunc(s.directories),
-	)).ServeHTTP)
+	).ServeHTTP)
 
 	s.server = &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: readHeaderTimeout}
 
@@ -80,6 +80,10 @@ func (s *Server) enableCors(next http.Handler) http.Handler {
 
 		// "OPTIONS" request just OK response
 		if r.Method == http.MethodOptions {
+			// Tell client that this pre-flight info is valid for 20 days
+			w.Header().Set("Access-Control-Max-Age", "1728000")
+			w.WriteHeader(http.StatusNoContent)
+
 			return
 		}
 
@@ -99,7 +103,7 @@ func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func (s *Server) Run(ctx context.Context) error {
+func (s *Server) Run(ctx context.Context, onStarted []func()) error {
 	go func() {
 		<-ctx.Done()
 
@@ -112,7 +116,11 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 	}()
 
-	s.log.Infof("starting server %s", s.server.Addr)
+	s.log.Infof("server started %s", s.server.Addr)
+
+	for _, f := range onStarted {
+		f()
+	}
 
 	err := s.server.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {

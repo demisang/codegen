@@ -1,4 +1,4 @@
-package codegen
+package internal
 
 type Placeholders []Placeholder
 
@@ -9,7 +9,7 @@ type Placeholder struct {
 }
 
 type Template struct {
-	Id           string        `json:"id"`
+	ID           string        `json:"id"`
 	Name         string        `json:"name"`
 	TargetDir    string        `json:"target_dir"`
 	Description  string        `json:"description"`
