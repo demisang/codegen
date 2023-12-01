@@ -2,7 +2,10 @@
 
 Code generator
 
+![codegen_screenshot](https://github.com/demisang/codegen/assets/600251/3657de47-72d8-4027-8dc8-2c88f181806e)
+
 ### Install
+
 
 ```shell
 go install github.com/demisang/codegen@latest
