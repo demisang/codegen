@@ -6,7 +6,6 @@ Code generator
 
 ### Install
 
-
 ```shell
 go install github.com/demisang/codegen@latest
 ```
@@ -21,9 +20,9 @@ go install github.com/demisang/codegen@latest
 Makefile:
 
 ```makefile
-## codegen: run codegen app on http://localhost:4765
+# codegen: run codegen app on http://localhost:4765
 codegen:
-    codegen --root="./" --templates="./pkg/codegen/templates"
+	codegen --root="./" --templates="./pkg/codegen/templates"
 ```
 
 Open GUI http://localhost:4765

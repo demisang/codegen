@@ -86,10 +86,10 @@ func runGuiServer(ctx context.Context, app *internal.App, log *logrus.Logger, ho
 			return
 		}
 
-		//goland:noinspection HttpUrlsUsage
 		err := openBrowserTab(serviceURL.String())
 		if err != nil {
-			log.Errorf("open browser: %v", err)
+			// log.Warnf("open browser: %v", err)
+			log.Infof("\nService available on %s\n", serviceURL.String())
 		}
 	})
 
