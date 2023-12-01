@@ -9,10 +9,11 @@ go install github.com/demisang/codegen@latest
 ```
 
 ### Get template samples
-```shell
-# Golang onion-architecture code samples (will extract to ./pkg/codegen/templates)
-wget -qO- https://github.com/demisang/codegen/tree/main/templates/go_onion.tar.gz | tar xvz - -C pkg/codegen/templates
-```
+
+* Golang onion-architecture code samples (will extract to `./pkg/codegen/templates`)
+  ```shell
+  DIR=pkg/codegen/templates; mkdir -p $DIR && wget -qO- https://github.com/demisang/codegen/raw/main/templates/go_onion.tar.gz | tar xvzf - -C $DIR
+  ```
 
 Makefile:
 
