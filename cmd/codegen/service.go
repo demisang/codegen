@@ -81,7 +81,7 @@ func runGuiServer(ctx context.Context, app *internal.App, log *logrus.Logger, ho
 		}
 
 		if !browser {
-			log.Infof("\nService available on %s\n", serviceURL.String())
+			log.Infof("Service available on %s", serviceURL.String())
 
 			return
 		}
@@ -89,7 +89,7 @@ func runGuiServer(ctx context.Context, app *internal.App, log *logrus.Logger, ho
 		err := openBrowserTab(serviceURL.String())
 		if err != nil {
 			// log.Warnf("open browser: %v", err)
-			log.Infof("\nService available on %s\n", serviceURL.String())
+			log.Infof("Service available on %s", serviceURL.String())
 		}
 	})
 
